@@ -13,22 +13,43 @@ class MoviesController < ApplicationController
 
   def index
     @all_ratings = Movie.all_ratings
-    
     sort = params[:sort]
-    @selected_ratings = (params[:commit] == "Refresh" ? (params[:ratings].present? ? params[:ratings].keys : []) : @all_ratings)
+    hash = Hash.new
+    use_ratings_session = !params[:ratings].present? && session[:ratings].present? 
+    use_sort_session = !params[:sort].present? && session[:sort].present?
     
-    if sort == "title"
-      @movies = Movie.order(:title)
-      @css_title = "hilite"
-    elsif sort == "release_date"
-      @movies = Movie.order(:release_date)
-      @css_date = "hilite"
-    elsif params[:ratings]
-      @movies = Movie.where(rating: params[:ratings].keys) 
+    if use_ratings_session || use_sort_session
+      if use_ratings_session && use_sort_session
+        hash = {:ratings=>session[:ratings], :sort=>session[:sort]}
+      elsif use_ratings_session
+        hash = {:ratings=>session[:ratings]}
+      else 
+        hash = {:sort=>session[:sort]}
+      end
+      flash.keep
+      redirect_to movies_path(params.merge(hash))
+    end
+    
+      
+    if params[:ratings].present?
+      @selected_ratings =  params[:ratings].keys
+      @movies = Movie.where(rating: params[:ratings].keys)
     else
+      @selected_ratings = @all_ratings
       @movies = Movie.all
     end
 
+    
+    if sort == "title"
+      @movies = @movies.order(:title)
+      @css_title = "hilite"
+    elsif sort == "release_date"
+      @movies = @movies.order(:release_date)
+      @css_release_date = "hilite"
+    end
+    
+    session[:ratings] = params[:ratings]
+    session[:sort] = params[:sort]
   end
 
   def new
